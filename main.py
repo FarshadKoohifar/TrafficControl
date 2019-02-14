@@ -6,6 +6,9 @@ if cmd_folder not in sys.path:
 cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"config")))
 if cmd_subfolder not in sys.path:
     sys.path.insert(0, cmd_subfolder)
+cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"utils")))
+if cmd_subfolder not in sys.path:
+    sys.path.insert(0, cmd_subfolder)
 import json
 import ray
 try:
@@ -14,13 +17,13 @@ except ImportError:
     from ray.rllib.agents.registry import get_agent_class
 from ray.tune import run_experiments
 from ray.tune.registry import register_env
-from flow.utils.registry import make_create_env
 from flow.utils.rllib import FlowParamsEncoder
 from flow.core.params import SumoParams, EnvParams, InitialConfig, NetParams, \
     InFlows, SumoCarFollowingParams
 from flow.core.params import VehicleParams
 from flow.controllers import SimCarFollowingController, GridRouter
 import config.configurations as CONFIG
+from utils.registry import make_create_env
 
 TOTAL_CARS = (CONFIG.NUM_CARS_LEFT + CONFIG.NUM_CARS_RIGHT) * CONFIG.N_COLUMNS + (CONFIG.NUM_CARS_BOT + CONFIG.NUM_CARS_TOP) * CONFIG.N_ROWS
 
@@ -76,7 +79,7 @@ initial_config, net_params = get_non_flow_params(CONFIG.V_ENTER, additional_net_
 
 flow_params = dict(
     exp_tag='ferocious',
-    env_name='PO_TrafficLightGridEnv',
+    env_name='PO_FerociousEnv',
     scenario='SimpleGridScenario',
     simulator='traci',
     sim=SumoParams(
@@ -107,8 +110,7 @@ def setup_exps():
     config['horizon'] = CONFIG.HORIZON
 
     # save the flow params for replay
-    flow_json = json.dumps(
-        flow_params, cls=FlowParamsEncoder, sort_keys=True, indent=4)
+    flow_json = json.dumps(flow_params, cls=FlowParamsEncoder, sort_keys=True, indent=4)
     config['env_config']['flow_params'] = flow_json
     config['env_config']['run'] = CONFIG.ALG_RUN
 
@@ -135,3 +137,14 @@ if __name__ == '__main__':
             },
         }
     })
+
+
+"""
+run_experiments
+    gym_name
+        flow_params
+    config
+        PPO config
+        flow_json
+
+"""
