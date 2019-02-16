@@ -48,6 +48,7 @@ grid_array = {
     "cars_bot": CONFIG.NUM_CARS_BOT
 }
 
+# Ferocious can add different reward and observation parameters here to be passed to Ferocious's environment!
 additional_env_params = {
         'target_velocity': CONFIG.TARGET_VELOCITY,
         'switch_time': CONFIG.SWITCH_TIME,
