@@ -1,5 +1,5 @@
 # time horizon of a single rollout
-HORIZON = 200
+HORIZON = 2000
 # number of rollouts per training iteration
 N_ROLLOUTS = 24
 # number of parallel workers
