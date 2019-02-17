@@ -3,7 +3,6 @@ import re
 from gym.spaces.discrete import Discrete
 from gym.spaces.box import Box
 from gym.spaces.tuple_space import Tuple
-from flow.core import rewards
 from flow.envs.base_env import Env
 
 ADDITIONAL_ENV_PARAMS = {
@@ -23,39 +22,38 @@ ADDITIONAL_PO_ENV_PARAMS = {
     "target_velocity": 30,
 }
 
-
 class FerociousEnv(Env):
     """Environment used to train traffic lights to regulate traffic flow
-    through an n x m grid.
+        through an n x m grid.
 
-    Required from env_params:
+        Required from env_params:
 
-    * switch_time: minimum switch time for each traffic light (in seconds).
-      Earlier RL commands are ignored.
-    * tl_type: whether the traffic lights should be actuated by sumo or RL
-      options are "controlled" and "actuated"
-    * discrete: determines whether the action space is meant to be discrete or
-      continuous
+        * switch_time: minimum switch time for each traffic light (in seconds).
+        Earlier RL commands are ignored.
+        * tl_type: whether the traffic lights should be actuated by sumo or RL
+        options are "controlled" and "actuated"
+        * discrete: determines whether the action space is meant to be discrete or
+        continuous
 
-    States
-        An observation is the distance of each vehicle to its intersection, a
-        number uniquely identifying which edge the vehicle is on, and the speed
-        of the vehicle.
+        States
+            An observation is the distance of each vehicle to its intersection, a
+            number uniquely identifying which edge the vehicle is on, and the speed
+            of the vehicle.
 
-    Actions
-        The action space consist of a list of float variables ranging from 0-1
-        specifying whether a traffic light is supposed to switch or not. The
-        actions are sent to the traffic light in the grid from left to right
-        and then top to bottom.
+        Actions
+            The action space consist of a list of float variables ranging from 0-1
+            specifying whether a traffic light is supposed to switch or not. The
+            actions are sent to the traffic light in the grid from left to right
+            and then top to bottom.
 
-    Rewards
-        The reward is the negative per vehicle delay minus a penalty for
-        switching traffic lights
+        Rewards
+            The reward is the negative per vehicle delay minus a penalty for
+            switching traffic lights
 
-    Termination
-        A rollout is terminated once the time horizon is reached.
+        Termination
+            A rollout is terminated once the time horizon is reached.
 
-    Additional
+        Additional
         Vehicles are rerouted to the start of their original routes once they
         reach the end of the network in order to ensure a constant number of
         vehicles.
@@ -220,9 +218,7 @@ class FerociousEnv(Env):
                     self.last_change[i, 2] = 0
 
     def compute_reward(self, rl_actions, **kwargs):
-        """See class definition."""
-        # penalize traffic light changes for occurring
-        return - rewards.boolean_action_penalty(rl_actions >= 0.5, gain=1.0)
+        raise NotImplementedError
 
     # ===============================
     # ============ UTILS ============
@@ -426,53 +422,49 @@ class FerociousEnv(Env):
 
 class PO_FerociousEnv(FerociousEnv):
     """Environment used to train traffic lights to regulate traffic flow
-    through an n x m grid.
+            through an n x m grid.
 
-    Required from env_params:
+            Required from env_params:
 
-    * switch_time: minimum switch time for each traffic light (in seconds).
-      Earlier RL commands are ignored.
-    * num_observed: number of vehicles nearest each intersection that is
-      observed in the state space; defaults to 2
+            * switch_time: minimum switch time for each traffic light (in seconds).
+            Earlier RL commands are ignored.
+            * num_observed: number of vehicles nearest each intersection that is
+            observed in the state space; defaults to 2
 
-    States
-        An observation is the number of observe vehicles in each intersection
-        closest to the traffic lights, a
-        number uniquely identifying which edge the vehicle is on, and the speed
-        of the vehicle.
+            States
+                An observation is the number of observe vehicles in each intersection
+                closest to the traffic lights, a
+                number uniquely identifying which edge the vehicle is on, and the speed
+                of the vehicle.
 
-    Actions
-        The action space consist of a list of float variables ranging from 0-1
-        specifying whether a traffic light is supposed to switch or not. The
-        actions are sent to the traffic light in the grid from left to right
-        and then top to bottom.
+            Actions
+                The action space consist of a list of float variables ranging from 0-1
+                specifying whether a traffic light is supposed to switch or not. The
+                actions are sent to the traffic light in the grid from left to right
+                and then top to bottom.
 
-    Rewards
-        The reward is the delay of each vehicle minus a penalty for switching
-        traffic lights
+            Rewards
+                The reward is the delay of each vehicle minus a penalty for switching
+                traffic lights
 
-    Termination
-        A rollout is terminated once the time horizon is reached.
+            Termination
+                A rollout is terminated once the time horizon is reached.
 
-    Additional
-        Vehicles are rerouted to the start of their original routes once they
-        reach the end of the network in order to ensure a constant number of
-        vehicles.
-
+            Additional
+            Vehicles are rerouted to the start of their original routes once they
+            reach the end of the network in order to ensure a constant number of
+            vehicles.
     """
 
     def __init__(self, env_params, sim_params, scenario, simulator='traci'):
         super().__init__(env_params, sim_params, scenario, simulator)
-
         for p in ADDITIONAL_PO_ENV_PARAMS.keys():
             if p not in env_params.additional_params:
                 raise KeyError(
                     'Environment parameter "{}" not supplied'.format(p))
-
         # number of vehicles nearest each intersection that is observed in the
         # state space; defaults to 2
         self.num_observed = env_params.additional_params.get("num_observed", 2)
-
         # used during visualization
         self.observed_ids = []
 
@@ -561,11 +553,7 @@ class PO_FerociousEnv(FerociousEnv):
             ]))
 
     def compute_reward(self, rl_actions, **kwargs):
-        """See class definition."""
-        if self.env_params.evaluate:
-            return - rewards.min_delay_unscaled(self)
-        else:
-            return rewards.desired_velocity(self, fail=kwargs["fail"])
+        return 10
 
     def additional_command(self):
         """See class definition."""

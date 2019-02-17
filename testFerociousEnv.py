@@ -9,16 +9,18 @@ if cmd_subfolder not in sys.path:
 cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"utils")))
 if cmd_subfolder not in sys.path:
     sys.path.insert(0, cmd_subfolder)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import json
-import ray
-try:
-    from ray.rllib.agents.agent import get_agent_class
-except ImportError:
-    from ray.rllib.agents.registry import get_agent_class
-from ray.tune import run_experiments
-from ray.tune.registry import register_env
-from flow.utils.rllib import FlowParamsEncoder
+
+import gym
+from gym.envs.registration import register
+
+from copy import deepcopy
+
+# import flow.envs
+from flow.core.params import InitialConfig
+from flow.core.params import TrafficLightParams
+import envs
+
 from flow.core.params import SumoParams, EnvParams, InitialConfig, NetParams, \
     InFlows, SumoCarFollowingParams
 from flow.core.params import VehicleParams
@@ -26,15 +28,78 @@ from flow.controllers import SimCarFollowingController, GridRouter
 import config.configurations as CONFIG
 from utils.registry import make_create_env
 
+
+
+
+
+
+
+
+def make_create_env1(params, version=0, render=None):
+
+    exp_tag = params["exp_tag"]
+
+    env_name = params["env_name"] + '-v{}'.format(version)
+
+    module = __import__("flow.scenarios", fromlist=[params["scenario"]])
+    scenario_class = getattr(module, params["scenario"])
+
+    env_params = params['env']
+    net_params = params['net']
+    initial_config = params.get('initial', InitialConfig())
+    traffic_lights = params.get("tls", TrafficLightParams())
+
+    def create_env(*_):
+        sim_params = deepcopy(params['sim'])
+        vehicles = deepcopy(params['veh'])
+
+        scenario = scenario_class(
+            name=exp_tag,
+            vehicles=vehicles,
+            net_params=net_params,
+            initial_config=initial_config,
+            traffic_lights=traffic_lights,
+        )
+
+        if render is not None:
+            sim_params.render = render
+
+        env_loc = 'envs'
+
+        try:
+            register(
+                id=env_name,
+                entry_point=env_loc + ':{}'.format(params["env_name"]),
+                kwargs={
+                    "env_params": env_params,
+                    "sim_params": sim_params,
+                    "scenario": scenario,
+                    "simulator": params['simulator']
+                })
+        except Exception:
+            pass
+        return gym.envs.make(env_name)
+
+    return create_env, env_name
+
+
+
+
+
+
+
+
+
+
+
+
 TOTAL_CARS = (CONFIG.NUM_CARS_LEFT + CONFIG.NUM_CARS_RIGHT) * CONFIG.N_COLUMNS + (CONFIG.NUM_CARS_BOT + CONFIG.NUM_CARS_TOP) * CONFIG.N_ROWS
 
 def get_non_flow_params(enter_speed, additional_net_params):
     additional_init_params = {'enter_speed': enter_speed}
     initial_config = InitialConfig(
         spacing='custom', additional_params=additional_init_params)
-    net_params = NetParams(
-        no_internal_links=False, additional_params=additional_net_params)
-
+    net_params = NetParams( no_internal_links=False, additional_params=additional_net_params)
     return initial_config, net_params
 
 grid_array = {
@@ -70,7 +135,7 @@ vehicles.add(
     veh_id='idm',
     acceleration_controller=(SimCarFollowingController, {}),
     car_following_params=SumoCarFollowingParams(
-        min_gap=CONFIG.MINGAP,
+        minGap=CONFIG.MINGAP,
         max_speed=CONFIG.V_ENTER,
         speed_mode="all_checks",
     ),
@@ -97,57 +162,13 @@ flow_params = dict(
     initial=initial_config,
 )
 
-def setup_exps():
-    agent_cls = get_agent_class(CONFIG.ALG_RUN)
-    config = agent_cls._default_config.copy()
-    config['num_workers'] = CONFIG.N_CPUS
-    config['train_batch_size'] = CONFIG.HORIZON * CONFIG.N_ROLLOUTS
-    config['gamma'] = CONFIG.GAMMA  # discount rate
-    config['model'].update({'fcnet_hiddens': CONFIG.HIDDEN_LAYERS})
-    config['use_gae'] = CONFIG.USE_GAE
-    config['lambda'] = CONFIG.LAMBDA
-    config['kl_target'] = CONFIG.KL_TARGET
-    config['num_sgd_iter'] = CONFIG.NUM_SGD_ITER
-    config['clip_actions'] = CONFIG.CLIP_ACTIONS  # FIXME(ev) temporary ray bug
-    config['horizon'] = CONFIG.HORIZON
-    config['observation_filter']= CONFIG.OBSERVATION_FILTER
-
-    # save the flow params for replay
-    flow_json = json.dumps(flow_params, cls=FlowParamsEncoder, sort_keys=True, indent=4)
-    config['env_config']['flow_params'] = flow_json
-    config['env_config']['run'] = CONFIG.ALG_RUN
-
-    create_env, gym_name = make_create_env(params=flow_params, version=0)
-
-    # Register as rllib env
-    register_env(gym_name, create_env)
-    return gym_name, config
-
 if __name__ == '__main__':
-    gym_name, config = setup_exps()
-    ray.init(num_cpus=CONFIG.N_CPUS + 1, redirect_output=False)
-    trials = run_experiments({
-        flow_params['exp_tag']: {
-            'run': CONFIG.ALG_RUN,
-            'env': gym_name,
-            'config': {
-                **config
-            },
-            'checkpoint_freq': CONFIG.CHECKPOINT_FREQ,
-            'max_failures': CONFIG.MAX_FAILURES,
-            'stop': {
-                'training_iteration': CONFIG.TRAINING_ITERATION,
-            },
-        }
-    })
+    print('redid')
+    create_env, gym_name = make_create_env(params=flow_params, version=0)
+    register_env(gym_name, create_env)
+
 
 
 """
-run_experiments
-    gym_name
-        flow_params
-    config
-        PPO config
-        flow_json
-
+def __init__(self, env_params, sim_params, scenario, simulator='traci'):
 """
