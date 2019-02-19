@@ -1,5 +1,4 @@
 import gym
-import universe
 import random
 import numpy as np 
 import tflearn
@@ -9,14 +8,6 @@ from statistics import mean, median
 from collections import Counter
 
 import ferocious_grid
-'''
-from gym.envs.registration import register
-
-register(
-    id='gym-ferocious-v1',
-    entry_point='gym_ferocious.envs:GymFerocious',
-)
-'''
 
 env = gym.make('ferocious-grid-v0')
 env.reset()
@@ -27,6 +18,7 @@ def some_random_games_first():
             #env.render()
             action = t
             observation, reward, done, info = env.step(action)
+            print (observation)
             if done:
                 break
 

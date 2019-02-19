@@ -1,5 +1,4 @@
 import gym
-import universe
 import random
 import numpy as np 
 import tflearn
