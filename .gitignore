@@ -1,11 +1,10 @@
 *__*
 
 .vscode/
-*/.vscode/
-*/*/.vscode/
-*/*/*/.vscode/
+**/.vscode/
 
 __pycache__
-*/__pycache__
-*/*/__pycache__
-*/*/*/__pycache__
+**/__pycache__
+
+**/*.egg-info/
+

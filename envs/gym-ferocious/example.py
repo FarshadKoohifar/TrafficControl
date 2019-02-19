@@ -8,18 +8,24 @@ from tflearn.layers.estimator import regression
 from statistics import mean, median
 from collections import Counter
 
+import gym_ferocious
+'''
+from gym.envs.registration import register
 
-
-
+register(
+    id='gym-ferocious-v1',
+    entry_point='gym_ferocious.envs:GymFerocious',
+)
+'''
 
 env = gym.make('gym-ferocious-v0')
 env.reset()
 def some_random_games_first():
-    for episode in range (5):
+    for episode in range (2):
         env.reset()
-        for _ in range(10):
-            env.render()
-            action = env.action_space.sample()
+        for t in range(10):
+            #env.render()
+            action = t
             observation, reward, done, info = env.step(action)
             if done:
                 break
