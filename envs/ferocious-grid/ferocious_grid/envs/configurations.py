@@ -18,7 +18,6 @@ class CONFIG:
     NUM_CARS_BOT = 1
 
     # additional_env_params
-    TARGET_VELOCITY = 50
     SWITCH_TIME = 3.0
     NUM_OBSERVED = 2
     DISCRETE = False
@@ -33,18 +32,6 @@ class CONFIG:
     V_ENTER = 30
     MINGAP = 2.5
 
-    # PPO
-    ALG_RUN = 'PPO'
-    GAMMA = 0.999
-    HIDDEN_LAYERS = [32, 32]
-    USE_GAE = True
-    LAMBDA = 0.97
-    KL_TARGET = 0.02
-    NUM_SGD_ITER = 10
-    CLIP_ACTIONS = False
-    OBSERVATION_FILTER = "MeanStdFilter"
-
-    # Tune
-    CHECKPOINT_FREQ = 20
-    MAX_FAILURES = 999
-    TRAINING_ITERATION = 200
+    # SumoParams
+    SIM_STEP = 1
+    RENDER = True

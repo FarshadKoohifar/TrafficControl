@@ -16,13 +16,6 @@ ADDITIONAL_ENV_PARAMS = {
     "discrete": False,
 }
 
-ADDITIONAL_PO_ENV_PARAMS = {
-    # num of vehicles the agent can observe on each incoming edge
-    "num_observed": 2,
-    # velocity to use in reward functions
-    "target_velocity": 30,
-}
-
 class FerociousEnv(Env):
     """Environment used to train traffic lights to regulate traffic flow
         through an n x m grid.
