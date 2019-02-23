@@ -15,10 +15,8 @@ class FerociousGrid(FerociousEnv):
     metadata = {'render.modes': ['human']}
 
     def __init__(self):
-
-        env_params = EnvParams( additional_params={"switch_time": CONFIG.SWITCH_TIME,"tl_type": CONFIG.TL_TYPE, "discrete": CONFIG.DISCRETE,}, horizon=CONFIG.HORIZON)
+        env_params = EnvParams( additional_params={"switch_time": CONFIG.SWITCH_TIME,"tl_type": CONFIG.TL_TYPE, "discrete": CONFIG.DISCRETE, "observation_distance"= CONFIG.OBSERVATION_DISTANCE}, horizon=CONFIG.HORIZON)
         sim_params = SumoParams(sim_step=CONFIG.SIM_STEP, render=CONFIG.RENDER,)
-
         """
         for scenario, we need to do a lot of work! It needs vehicles. Vehicles need router etc:
             scenario
@@ -73,12 +71,24 @@ class FerociousGrid(FerociousEnv):
             net_params=net_params,
             initial_config=initial_config
         )
-
         super().__init__(env_params, sim_params, scenario )
+        # since there is no reference to kernel_api.vehicle.getLength, I guestimate it. Should be used just for normalization.
+        self.max_vehicle_density = 1.0/(2*CONFIG.MINGAP)
+        self.edge_names = self.k.vehicle.get_edge_names()
+        print (self.edge_names)
+        print (len(edge_names))
+        self.observed_queue_max = 0
+        for i in range(0, self.observation_distance, 1/self.max_vehicle_density):
+            self.observed_queue_max += self.observation_distance - i
+        self.observed_queue = np.zeros( len(edge_names) )
+        self.traffic_lights = np.zeros( 4 * self.num_traffic_lights )
+        for i in range (num_traffic_lights):
+            self.traffic_lights[4*i:4*i+4] = [1, 0, 0, 0]
+        self.lastchange = np.zeros( self.num_traffic_lights )
 
     @property
     def action_space(self):
-        """See class definition."""
+        """This is exacly the same as parrent, but in the future, we are going to be able to add phases and make it more general"""
         if self.discrete:
             return Discrete(2 ** self.num_traffic_lights)
         else:
@@ -90,56 +100,41 @@ class FerociousGrid(FerociousEnv):
 
     @property
     def observation_space(self):
-        """See class definition."""
-        speed = Box(
+        """ Use normalized weighted average of cars in the queue as observation.
+            Normalization is with regards to a full queue of vehicles.
+            Traffic lights are observed as a vector signifying which lights are on.
+            The lapsed time from the last change is normalized to the max phase lenght."""
+        observed_queue = Box(
             low=0,
             high=1,
-            shape=(self.scenario.vehicles.num_vehicles,),
-            dtype=np.float32)
-        dist_to_intersec = Box(
-            low=0.,
-            high=np.inf,
-            shape=(self.scenario.vehicles.num_vehicles,),
-            dtype=np.float32)
-        edge_num = Box(
-            low=0.,
-            high=1,
-            shape=(self.scenario.vehicles.num_vehicles,),
+            shape=(self.num_edges,),   # we observe all edges
             dtype=np.float32)
         traffic_lights = Box(
             low=0.,
             high=1,
-            shape=(3 * self.rows * self.cols,),
+            shape=(4 * self.num_traffic_lights,),   # each traffic light can be observed as in up-down, left-rigth, or in yellow. [1 0 0 0] means grgr, [0 1 0 0] means yryr, [0 0 1 0] means rgrg, and [0 0 0 1] means ryry
+            dtype=np.float32) # TODO after validation that it works with float, type should be turned into boolean.
+        last_change = Box(
+            low=0.,
+            high=1,
+            shape=(self.num_traffic_lights,),   # normalized time laps since the last change.
             dtype=np.float32)
-        return Tuple((speed, dist_to_intersec, edge_num, traffic_lights))
+        return Tuple((observed_queue, traffic_lights, last_change))
 
     def get_state(self):
-        """See class definition."""
-        # compute the normalizers
-        max_dist = max(self.k.scenario.network.short_length,
-                       self.k.scenario.network.long_length,
-                       self.k.scenario.network.inner_length)
+        for index , edge in enumerate(self.edge_names)
+            vehicles = self.k.vehicle.get_ids_by_edge (edge)
+            self.observed_queue[index]=0
+            for veh_id in vehicles:
+                dist_to_intersec = self.edge_end_dist(veh_id, edge_id)
+                if dist_to_intersec == -1 or dist_to_intersec > self.observation_distance: # this vehicle is inside the intersection or outside observation distance
+                    continue
+                #if green_lighted and speed is high:continue
+                if dist_to_intersec <= self.observation_distance:
+                    self.observed_queue[index] += (self.observation_distance - dist_to_intersec)
+            self.observed_queue[index] /= self.observed_queue_max
 
-        # get the state arrays
-        speeds = [
-            self.k.vehicle.get_speed(veh_id) / self.k.scenario.max_speed()
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-        dist_to_intersec = [
-            self.get_distance_to_intersection(veh_id) / max_dist
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-        edges = [
-            self._convert_edge(self.k.vehicle.get_edge(veh_id)) /
-            (self.k.scenario.network.num_edges - 1)
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-
-        state = [
-            speeds, dist_to_intersec, edges,
-            self.last_change.flatten().tolist()
-        ]
-        return np.array(state)
+        return np.array([self.observed_queue, self.traffic_lights, self.lastchange])
 
     def _apply_rl_actions(self, rl_actions):
         """See class definition."""
@@ -153,10 +148,48 @@ class FerociousGrid(FerociousEnv):
             # that should not switch the direction
             rl_mask = rl_actions > 0.0
 
-        for i, action in enumerate(rl_mask):
-            # check if our timer has exceeded the yellow phase, meaning it
-            # should switch to red
-            if self.last_change[i, 2] == 0:  # currently yellow
+        """
+            This needs to update traffic_lights and lastchange:
+            for each intersection:
+            (1) if enough time has not passed since last action:
+                    just update lastchage
+                    continue
+            (2) else:
+            (3)     if intersection is in yellow:
+                        intersection go red or green
+                        lastchange = 0
+                        continue
+            (4)     if rl_action == current state
+                        just update lastchange
+                        continue
+            (5)     else:
+                        intersection go yellow
+                        last change = 0
+                        continue
+        """
+        for intersection, action in enumerate(rl_mask):
+            # (1)
+            if self.last_change [ intersection ] + self.sim_step < self.min_switch_time:  # cant act
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            # (2)
+            else:
+                #(3)
+                if intersection is in yellow:
+
+
+
+
+
+
+
+
+
+
+            if yellow:
+                red
+                self.last_change[i]=0
+
                 self.last_change[i, 0] += self.sim_step
                 if self.last_change[i, 0] >= self.min_switch_time:
                     if self.last_change[i, 1] == 0:

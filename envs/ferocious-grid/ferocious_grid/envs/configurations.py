@@ -19,9 +19,10 @@ class CONFIG:
 
     # additional_env_params
     SWITCH_TIME = 3.0
-    NUM_OBSERVED = 2
+    MAX_PHASE_LENGTH = 120.0
     DISCRETE = False
     TL_TYPE = 'controlled'
+    OBSERVATION_DISTANCE= 100.0
 
     # additional_net_params
     SPEED_LIMIT = 35

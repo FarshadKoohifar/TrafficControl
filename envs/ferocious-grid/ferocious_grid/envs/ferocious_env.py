@@ -14,6 +14,8 @@ ADDITIONAL_ENV_PARAMS = {
     "tl_type": "controlled",
     # determines whether the action space is meant to be discrete or continuous
     "discrete": False,
+    # distance that each traffic ligth can see a vehicle
+    "observation_distance": 100,
 }
 
 class FerociousEnv(Env):
@@ -63,7 +65,6 @@ class FerociousEnv(Env):
         self.grid_array = scenario.net_params.additional_params["grid_array"]
         self.rows = self.grid_array["row_num"]
         self.cols = self.grid_array["col_num"]
-        # self.num_observed = self.grid_array.get("num_observed", 3)
         self.num_traffic_lights = self.rows * self.cols
         self.tl_type = env_params.additional_params.get('tl_type')
 
@@ -72,9 +73,6 @@ class FerociousEnv(Env):
         # Saving env variables for plotting
         self.steps = env_params.horizon
         self.node_mapping = scenario.get_node_mapping()
-
-        # keeps track of the last time the light was allowed to change.
-        self.last_change = np.zeros((self.num_traffic_lights, 3))
 
         # when this hits min_switch_time we change from yellow to red
         # the second column indicates the direction that is currently being
@@ -86,116 +84,26 @@ class FerociousEnv(Env):
             for i in range(self.rows * self.cols):
                 self.k.traffic_light.set_state(
                     node_id='center' + str(i), state="GGGrrrGGGrrr")
-                self.last_change[i, 2] = 1
+                self.last_change[i] = 1
 
         # check whether the action space is meant to be discrete or continuous
         self.discrete = env_params.additional_params.get("discrete", False)
+        self.observation_distance = env_params.additional_params.get("observation_distance")
+        
 
     @property
     def action_space(self):
-        """See class definition."""
-        if self.discrete:
-            return Discrete(2 ** self.num_traffic_lights)
-        else:
-            return Box(
-                low=-1,
-                high=1,
-                shape=(self.num_traffic_lights,),
-                dtype=np.float32)
+        raise NotImplementedError
 
     @property
     def observation_space(self):
-        """See class definition."""
-        speed = Box(
-            low=0,
-            high=1,
-            shape=(self.scenario.vehicles.num_vehicles,),
-            dtype=np.float32)
-        dist_to_intersec = Box(
-            low=0.,
-            high=np.inf,
-            shape=(self.scenario.vehicles.num_vehicles,),
-            dtype=np.float32)
-        edge_num = Box(
-            low=0.,
-            high=1,
-            shape=(self.scenario.vehicles.num_vehicles,),
-            dtype=np.float32)
-        traffic_lights = Box(
-            low=0.,
-            high=1,
-            shape=(3 * self.rows * self.cols,),
-            dtype=np.float32)
-        return Tuple((speed, dist_to_intersec, edge_num, traffic_lights))
+        raise NotImplementedError
 
     def get_state(self):
-        """See class definition."""
-        # compute the normalizers
-        max_dist = max(self.k.scenario.network.short_length,
-                       self.k.scenario.network.long_length,
-                       self.k.scenario.network.inner_length)
-
-        # get the state arrays
-        speeds = [
-            self.k.vehicle.get_speed(veh_id) / self.k.scenario.max_speed()
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-        dist_to_intersec = [
-            self.get_distance_to_intersection(veh_id) / max_dist
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-        edges = [
-            self._convert_edge(self.k.vehicle.get_edge(veh_id)) /
-            (self.k.scenario.network.num_edges - 1)
-            for veh_id in self.k.vehicle.get_ids()
-        ]
-
-        state = [
-            speeds, dist_to_intersec, edges,
-            self.last_change.flatten().tolist()
-        ]
-        return np.array(state)
+        raise NotImplementedError
 
     def _apply_rl_actions(self, rl_actions):
-        """See class definition."""
-        # check if the action space is discrete
-        if self.discrete:
-            # convert single value to list of 0's and 1's
-            rl_mask = [int(x) for x in list('{0:0b}'.format(rl_actions))]
-            rl_mask = [0] * (self.num_traffic_lights - len(rl_mask)) + rl_mask
-        else:
-            # convert values less than 0.5 to zero and above to 1. 0's indicate
-            # that should not switch the direction
-            rl_mask = rl_actions > 0.0
-
-        for i, action in enumerate(rl_mask):
-            # check if our timer has exceeded the yellow phase, meaning it
-            # should switch to red
-            if self.last_change[i, 2] == 0:  # currently yellow
-                self.last_change[i, 0] += self.sim_step
-                if self.last_change[i, 0] >= self.min_switch_time:
-                    if self.last_change[i, 1] == 0:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state="GrGr")
-                    else:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='rGrG')
-                    self.last_change[i, 2] = 1
-            else:
-                if action:
-                    if self.last_change[i, 1] == 0:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='yryr')
-                    else:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='ryry')
-                    self.last_change[i, 0] = 0.0
-                    self.last_change[i, 1] = not self.last_change[i, 1]
-                    self.last_change[i, 2] = 0
+        raise NotImplementedError
 
     def compute_reward(self, rl_actions, **kwargs):
         raise NotImplementedError
@@ -204,58 +112,11 @@ class FerociousEnv(Env):
     # ============ UTILS ============
     # ===============================
 
-    def get_distance_to_intersection(self, veh_ids):
-        """Determines the smallest distance from the current vehicle's position
-        to any of the intersections.
-
-        Parameters
-        ----------
-        veh_ids : str
-            vehicle identifier
-
-        Returns
-        -------
-        tup
-            1st element: distance to closest intersection
-            2nd element: intersection ID (which also specifies which side of
-            the intersection the vehicle will be arriving at)
-        """
-        if isinstance(veh_ids, list):
-            return [self.find_intersection_dist(veh_id) for veh_id in veh_ids]
-        else:
-            return self.find_intersection_dist(veh_ids)
-
-    def find_intersection_dist(self, veh_id):
-        """Return distance from the vehicle's current position to the position
-        of the node it is heading toward."""
-        edge_id = self.k.vehicle.get_edge(veh_id)
-        # FIXME this might not be the best way of handling this
-        if edge_id == "":
-            return -10
-        if 'center' in edge_id:
-            return 0
+    def edge_end_dist(self, veh_id, edge_id):
         edge_len = self.k.scenario.edge_length(edge_id)
         relative_pos = self.k.vehicle.get_position(veh_id)
         dist = edge_len - relative_pos
         return dist
-
-    def sort_by_intersection_dist(self):
-        """Sorts the vehicle ids of vehicles in the network by their distance
-        to the intersection.
-
-        Returns
-        -------
-        sorted_ids : list
-            a list of all vehicle IDs sorted by position
-        sorted_extra_data : list or tuple
-            an extra component (list, tuple, etc...) containing extra sorted
-            data, such as positions. If no extra component is needed, a value
-            of None should be returned
-        """
-        ids = self.k.vehicle.get_ids()
-        sorted_indx = np.argsort(self.get_distance_to_intersection(ids))
-        sorted_ids = np.array(ids)[sorted_indx]
-        return sorted_ids
 
     def _convert_edge(self, edges):
         """Converts the string edge to a number.
