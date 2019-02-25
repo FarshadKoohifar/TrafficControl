@@ -83,8 +83,7 @@ class FerociousEnv(Env):
         if self.tl_type != "actuated":
             for i in range(self.rows * self.cols):
                 self.k.traffic_light.set_state(
-                    node_id='center' + str(i), state="GGGrrrGGGrrr")
-                self.last_change[i] = 1
+                    node_id='center' + str(i), state="grgr")
 
         # check whether the action space is meant to be discrete or continuous
         self.discrete = env_params.additional_params.get("discrete", False)

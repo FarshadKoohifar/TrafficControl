@@ -12,10 +12,10 @@ class CONFIG:
     SHORT_LENGTH = 1000
     N_ROWS = 3
     N_COLUMNS = 3
-    NUM_CARS_LEFT = 1
-    NUM_CARS_RIGHT = 1
-    NUM_CARS_TOP = 1
-    NUM_CARS_BOT = 1
+    NUM_CARS_LEFT = 10
+    NUM_CARS_RIGHT = 10
+    NUM_CARS_TOP = 10
+    NUM_CARS_BOT = 10
 
     # additional_env_params
     SWITCH_TIME = 3.0
@@ -35,4 +35,4 @@ class CONFIG:
 
     # SumoParams
     SIM_STEP = 1
-    RENDER = True
+    RENDER = False

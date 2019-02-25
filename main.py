@@ -24,80 +24,11 @@ from flow.core.params import SumoParams, EnvParams, InitialConfig, NetParams, \
 from flow.core.params import VehicleParams
 from flow.controllers import SimCarFollowingController, GridRouter
 import config.configurations as CONFIG
-from utils.registry import make_create_env
+from utils.ez_registry import make_create_env
+import gym
+import ferocious_grid
 
-TOTAL_CARS = (CONFIG.NUM_CARS_LEFT + CONFIG.NUM_CARS_RIGHT) * CONFIG.N_COLUMNS + (CONFIG.NUM_CARS_BOT + CONFIG.NUM_CARS_TOP) * CONFIG.N_ROWS
-
-def get_non_flow_params(enter_speed, additional_net_params):
-    additional_init_params = {'enter_speed': enter_speed}
-    initial_config = InitialConfig(
-        spacing='custom', additional_params=additional_init_params)
-    net_params = NetParams(
-        no_internal_links=False, additional_params=additional_net_params)
-
-    return initial_config, net_params
-
-grid_array = {
-    "short_length": CONFIG.SHORT_LENGTH,
-    "inner_length": CONFIG.INNER_LENGTH,
-    "long_length": CONFIG.LONG_LENGTH,
-    "row_num": CONFIG.N_ROWS,
-    "col_num": CONFIG.N_COLUMNS,
-    "cars_left": CONFIG.NUM_CARS_LEFT,
-    "cars_right": CONFIG.NUM_CARS_RIGHT,
-    "cars_top": CONFIG.NUM_CARS_TOP,
-    "cars_bot": CONFIG.NUM_CARS_BOT
-}
-
-# Ferocious can add different reward and observation parameters here to be passed to Ferocious's environment!
-additional_env_params = {
-        'target_velocity': CONFIG.TARGET_VELOCITY,
-        'switch_time': CONFIG.SWITCH_TIME,
-        'num_observed': CONFIG.NUM_OBSERVED,
-        'discrete': CONFIG.DISCRETE,
-        'tl_type': CONFIG.TL_TYPE
-    }
-
-additional_net_params = {
-    'speed_limit': CONFIG.SPEED_LIMIT,
-    'grid_array': grid_array,
-    'horizontal_lanes': CONFIG.HORIZONTAL_LANES,
-    'vertical_lanes': CONFIG.VERTICAL_LANES
-}
-
-vehicles = VehicleParams()
-vehicles.add(
-    veh_id='idm',
-    acceleration_controller=(SimCarFollowingController, {}),
-    car_following_params=SumoCarFollowingParams(
-        min_gap=CONFIG.MINGAP,
-        max_speed=CONFIG.V_ENTER,
-        speed_mode="all_checks",
-    ),
-    routing_controller=(GridRouter, {}),
-    num_vehicles=TOTAL_CARS)
-
-initial_config, net_params = get_non_flow_params(CONFIG.V_ENTER, additional_net_params)
-
-flow_params = dict(
-    exp_tag='ferocious',
-    env_name='PO_FerociousEnv',
-    scenario='SimpleGridScenario',
-    simulator='traci',
-    sim=SumoParams(
-        sim_step=1,
-        render=False,
-    ),
-    env=EnvParams(
-        horizon=CONFIG.HORIZON,
-        additional_params=additional_env_params,
-    ),
-    net=net_params,
-    veh=vehicles,
-    initial=initial_config,
-)
-
-def setup_exps():
+if __name__ == '__main__':
     agent_cls = get_agent_class(CONFIG.ALG_RUN)
     config = agent_cls._default_config.copy()
     config['num_workers'] = CONFIG.N_CPUS
@@ -111,23 +42,16 @@ def setup_exps():
     config['clip_actions'] = CONFIG.CLIP_ACTIONS  # FIXME(ev) temporary ray bug
     config['horizon'] = CONFIG.HORIZON
     config['observation_filter']= CONFIG.OBSERVATION_FILTER
-
-    # save the flow params for replay
-    flow_json = json.dumps(flow_params, cls=FlowParamsEncoder, sort_keys=True, indent=4)
-    config['env_config']['flow_params'] = flow_json
     config['env_config']['run'] = CONFIG.ALG_RUN
 
-    create_env, gym_name = make_create_env(params=flow_params, version=0)
+    create_env, gym_name = make_create_env()
 
     # Register as rllib env
     register_env(gym_name, create_env)
-    return gym_name, config
 
-if __name__ == '__main__':
-    gym_name, config = setup_exps()
     ray.init(num_cpus=CONFIG.N_CPUS + 1, redirect_output=False)
     trials = run_experiments({
-        flow_params['exp_tag']: {
+        CONFIG.ALG_RUN: {
             'run': CONFIG.ALG_RUN,
             'env': gym_name,
             'config': {
@@ -141,13 +65,3 @@ if __name__ == '__main__':
         }
     })
 
-
-"""
-run_experiments
-    gym_name
-        flow_params
-    config
-        PPO config
-        flow_json
-
-"""
