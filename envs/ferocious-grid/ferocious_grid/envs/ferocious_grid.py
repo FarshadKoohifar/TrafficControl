@@ -168,52 +168,45 @@ class FerociousGrid(FerociousEnv):
                         continue
         """
         for intersection, action in enumerate(rl_mask):
+            assert (sum(self.traffic_lights[4*intersection:4*intersection+4]==1))
             # (1)
             if self.last_change [ intersection ] + self.sim_step < self.min_switch_time:  # cant act
                 self.last_change [ intersection ] += self.sim_step
                 continue
             # (2)
-            else:
-                #(3)
-                if intersection is in yellow:
-
-
-
-
-
-
-
-
-
-
-            if yellow:
-                red
-                self.last_change[i]=0
-
-                self.last_change[i, 0] += self.sim_step
-                if self.last_change[i, 0] >= self.min_switch_time:
-                    if self.last_change[i, 1] == 0:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state="GrGr")
-                    else:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='rGrG')
-                    self.last_change[i, 2] = 1
-            else:
-                if action:
-                    if self.last_change[i, 1] == 0:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='yryr')
-                    else:
-                        self.k.traffic_light.set_state(
-                            node_id='center{}'.format(i),
-                            state='ryry')
-                    self.last_change[i, 0] = 0.0
-                    self.last_change[i, 1] = not self.last_change[i, 1]
-                    self.last_change[i, 2] = 0
+            #(3)
+            if self.traffic_lights[4*intersection+1] :
+                self.traffic_lights[4*intersection+1] = 0
+                self.traffic_lights[4*intersection+2] = 1
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="rGrG")
+                continue
+            if self.traffic_lights[4*intersection+3] :
+                self.traffic_lights[4*intersection+3] = 0
+                self.traffic_lights[4*intersection+0] = 1
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="GrGr")
+                continue
+            #(4)
+            if self.traffic_lights[4*intersection+0] and rl_mask[intersection]:
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            if self.traffic_lights[4*intersection+2] and  not rl_mask[intersection]:
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            #(5)
+            if self.traffic_lights[4*intersection+0] and  not rl_mask[intersection]:
+                self.traffic_lights[4*intersection+1] = 1
+                self.traffic_lights[4*intersection+0] = 0
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="yryr")
+                continue
+            if self.traffic_lights[4*intersection+2] and rl_mask[intersection]:
+                self.traffic_lights[4*intersection+3] = 1
+                self.traffic_lights[4*intersection+2] = 0
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="ryry")
+                continue
 
     def compute_reward(self, rl_actions, **kwargs):
         raise NotImplementedError
