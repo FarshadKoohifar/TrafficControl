@@ -128,10 +128,12 @@ class FerociousGrid(FerociousEnv):
             for veh_id in vehicles:
                 dist_to_intersec = self.edge_end_dist(veh_id, edge_id)
                 if dist_to_intersec == -1 or dist_to_intersec > self.observation_distance: # this vehicle is inside the intersection or outside observation distance
+                    self.k.vehicle.set_color(veh_id, (255, 255, 255)):
                     continue
                 #if green_lighted and speed is high:continue
                 if dist_to_intersec <= self.observation_distance:
                     self.observed_queue[index] += (self.observation_distance - dist_to_intersec)
+                    self.k.vehicle.set_color(veh_id, (0, 255, 0)):
             self.observed_queue[index] /= self.observed_queue_max
 
         return np.array([self.observed_queue, self.traffic_lights, self.lastchange])
@@ -209,4 +211,6 @@ class FerociousGrid(FerociousEnv):
                 continue
 
     def compute_reward(self, rl_actions, **kwargs):
-        raise NotImplementedError
+        vel = np.array(env.k.vehicle.get_speed(env.k.vehicle.get_ids()))
+        maxwell = len(vel)*CONFIG.SPEED_LIMIT
+        return np.sum(vel)/maxwell

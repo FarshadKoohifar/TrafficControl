@@ -7,9 +7,9 @@ class CONFIG:
     N_CPUS = 6
 
     # grid_array
-    INNER_LENGTH = 300
-    LONG_LENGTH = 100
-    SHORT_LENGTH = 300
+    INNER_LENGTH = 1000
+    LONG_LENGTH = 1000
+    SHORT_LENGTH = 1000
     N_ROWS = 3
     N_COLUMNS = 3
     NUM_CARS_LEFT = 1
