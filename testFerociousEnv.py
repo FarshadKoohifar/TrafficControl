@@ -25,7 +25,7 @@ from flow.core.params import SumoParams, EnvParams, InitialConfig, NetParams, \
     InFlows, SumoCarFollowingParams
 from flow.core.params import VehicleParams
 from flow.controllers import SimCarFollowingController, GridRouter
-import config.configurations as CONFIG
+import config.rl_configurations as CONFIG
 from utils.registry import make_create_env
 
 

@@ -4,7 +4,7 @@ from gym.spaces.discrete import Discrete
 from gym.spaces.box import Box
 from gym.spaces.tuple_space import Tuple
 from flow.envs.base_env import Env
-from ferocious_grid.envs.configurations import CONFIG
+from ferocious_grid.envs.env_configurations import CONFIG_BASE as CONFIG
 
 ADDITIONAL_ENV_PARAMS = {
     # minimum switch time for each traffic light (in seconds)

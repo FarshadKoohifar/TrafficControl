@@ -23,7 +23,7 @@ from flow.core.params import SumoParams, EnvParams, InitialConfig, NetParams, \
     InFlows, SumoCarFollowingParams
 from flow.core.params import VehicleParams
 from flow.controllers import SimCarFollowingController, GridRouter
-import config.configurations as CONFIG
+import config.rl_configurations as CONFIG
 from utils.ez_registry import make_create_env
 import gym
 import ferocious_grid
@@ -34,15 +34,19 @@ if __name__ == '__main__':
     config['num_workers'] = CONFIG.N_CPUS
     config['train_batch_size'] = CONFIG.HORIZON * CONFIG.N_ROLLOUTS
     config['gamma'] = CONFIG.GAMMA  # discount rate
-    config['model'].update({'fcnet_hiddens': CONFIG.HIDDEN_LAYERS})
-    config['use_gae'] = CONFIG.USE_GAE
-    config['lambda'] = CONFIG.LAMBDA
-    config['kl_target'] = CONFIG.KL_TARGET
-    config['num_sgd_iter'] = CONFIG.NUM_SGD_ITER
-    config['clip_actions'] = CONFIG.CLIP_ACTIONS  # FIXME(ev) temporary ray bug
     config['horizon'] = CONFIG.HORIZON
-    config['observation_filter']= CONFIG.OBSERVATION_FILTER
     config['env_config']['run'] = CONFIG.ALG_RUN
+    if CONFIG.ALG_RUN == 'PPO':
+        config['model'].update({'fcnet_hiddens': CONFIG.HIDDEN_LAYERS})
+        config['use_gae'] = CONFIG.USE_GAE
+        config['lambda'] = CONFIG.LAMBDA
+        config['kl_target'] = CONFIG.KL_TARGET
+        config['num_sgd_iter'] = CONFIG.NUM_SGD_ITER
+        config['clip_actions'] = CONFIG.CLIP_ACTIONS  # FIXME(ev) temporary ray bug
+        config['observation_filter']= CONFIG.OBSERVATION_FILTER
+    if CONFIG.ALG_RUN == 'APEX':
+        pass
+    
 
     create_env, gym_name = make_create_env()
 
