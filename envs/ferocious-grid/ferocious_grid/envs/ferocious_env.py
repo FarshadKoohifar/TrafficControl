@@ -157,15 +157,14 @@ class FerociousEnv(Env):
         next_observation = np.copy(states)
         # test if the agent should terminate due to a crash
         done = crash or self.steps < self.time_counter
-        if self.steps < self.time_counter:
-            print ('done, self.time_counter:\t{}\t last reward:\t{}'.format(self.time_counter, reward))
 
         # compute the info for each agent
         infos = {}
-
         # compute the reward
         rl_clipped = self.clip_actions(rl_actions)
         reward = self.compute_reward(rl_clipped, fail=crash)
+        if self.steps < self.time_counter:
+            print ('done, self.time_counter:\t{}\t last reward:\t{}'.format(self.time_counter, reward))
         return next_observation, reward, done, infos
 
     @property
