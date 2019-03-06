@@ -1,11 +1,21 @@
+import getpass
+username = getpass.getuser()
 
 # time horizon of a single rollout
 HORIZON = 1000
 # number of rollouts per training iteration
-N_ROLLOUTS = 24
-# number of parallel workers
-N_CPUS = 6
-N_GPUS = 0
+
+if username == "ferocious":
+    N_ROLLOUTS = 4
+    # number of parallel workers
+    N_CPUS = 6
+    N_GPUS = 1
+else :
+    N_ROLLOUTS = 40
+    # number of parallel workers
+    N_CPUS = 46
+    N_GPUS = 0
+
 
 # Tune
 CHECKPOINT_FREQ = 20

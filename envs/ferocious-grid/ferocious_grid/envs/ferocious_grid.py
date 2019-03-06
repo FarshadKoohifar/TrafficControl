@@ -259,4 +259,6 @@ class FerociousGrid(FerociousEnv):
     def compute_reward(self, rl_actions, **kwargs):
         vel = np.array(self.k.vehicle.get_speed(self.k.vehicle.get_ids()))
         maxwell = len(vel)*CONFIG.SPEED_LIMIT
-        return np.sum(vel)/maxwell
+        result = np.sum(np.absolute(vel))/maxwell
+        assert isinstance(result, float) and result >= 0 and result <= 1
+        return result

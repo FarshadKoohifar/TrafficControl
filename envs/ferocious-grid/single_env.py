@@ -30,7 +30,7 @@ def random_action(nof_iterations, nof_steps):
         print("=============================== random_action <{}>".format(i_episode))
         print ("last action: {}\t".format(action))
         print("last observation: {}\t".format(observation ))
-        print("sum_reward: \{}".format(sum_reward))
+        print("sum_reward: {}".format(sum_reward))
 
 def fixed_time_action(nof_iterations, nof_steps, fixed_time):
     for i_episode in range(nof_iterations):
@@ -58,6 +58,6 @@ def constant_action(nof_iterations,nof_steps):
     fixed_time_action(nof_iterations, nof_steps, nof_steps)
 
 #show_action_space_samples(nof_iterations)
-#random_action(nof_iterations, nof_steps)
+random_action(nof_iterations, nof_steps)
 #fixed_time_action(nof_iterations, nof_steps, fixed_time)
-constant_action(nof_iterations,nof_steps)
+#constant_action(nof_iterations,nof_steps)

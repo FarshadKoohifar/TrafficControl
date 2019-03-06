@@ -32,6 +32,7 @@ if __name__ == '__main__':
     agent_cls = get_agent_class(CONFIG.ALG_RUN)
     config = agent_cls._default_config.copy()
     config['num_workers'] = CONFIG.N_CPUS
+    config['num_gpus'] = CONFIG.N_GPUS
     config['train_batch_size'] = CONFIG.HORIZON * CONFIG.N_ROLLOUTS
     config['horizon'] = CONFIG.HORIZON
     config['env_config']['run'] = CONFIG.ALG_RUN
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     # Register as rllib env
     register_env(gym_name, create_env)
 
-    ray.init(num_cpus=CONFIG.N_CPUS + 1, redirect_output=False)
+    ray.init(num_cpus=CONFIG.N_CPUS + 1, num_gpus = CONFIG.N_GPUS, redirect_output=False)
     trials = run_experiments({
         CONFIG.ALG_RUN: {
             'run': CONFIG.ALG_RUN,
