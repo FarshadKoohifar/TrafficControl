@@ -33,10 +33,10 @@ if __name__ == '__main__':
     config = agent_cls._default_config.copy()
     config['num_workers'] = CONFIG.N_CPUS
     config['train_batch_size'] = CONFIG.HORIZON * CONFIG.N_ROLLOUTS
-    config['gamma'] = CONFIG.GAMMA  # discount rate
     config['horizon'] = CONFIG.HORIZON
     config['env_config']['run'] = CONFIG.ALG_RUN
     if CONFIG.ALG_RUN == 'PPO':
+        config['gamma'] = CONFIG.GAMMA  # discount rate
         config['model'].update({'fcnet_hiddens': CONFIG.HIDDEN_LAYERS})
         config['use_gae'] = CONFIG.USE_GAE
         config['lambda'] = CONFIG.LAMBDA

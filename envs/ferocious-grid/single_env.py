@@ -54,6 +54,10 @@ def fixed_time_action(nof_iterations, nof_steps, fixed_time):
         print("last observation: {}\t".format(observation ))
         print("sum_reward: {}".format(sum_reward))
 
-show_action_space_samples(nof_iterations)
+def constant_action(nof_iterations,nof_steps):
+    fixed_time_action(nof_iterations, nof_steps, nof_steps)
+
+#show_action_space_samples(nof_iterations)
 #random_action(nof_iterations, nof_steps)
 #fixed_time_action(nof_iterations, nof_steps, fixed_time)
+constant_action(nof_iterations,nof_steps)

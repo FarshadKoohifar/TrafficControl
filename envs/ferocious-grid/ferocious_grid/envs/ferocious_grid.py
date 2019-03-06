@@ -105,7 +105,7 @@ class FerociousGrid(FerociousEnv):
     def action_space(self):
         """This is exacly the same as parrent, but in the future, we are going to be able to add phases and make it more general"""
         if self.discrete:
-            return MultiDiscrete(2 * np.ones(self.num_traffic_lights) )
+            return Discrete(2 ** self.num_traffic_lights )
         else:
             return Box(
                 low=-1.0,
@@ -160,6 +160,7 @@ class FerociousGrid(FerociousEnv):
                         self.observed_queue[index] += (self.observation_distance - dist_to_intersec)
                         self.k.vehicle.set_color(veh_id, (0, 255, 0))
                 self.observed_queue[index] /= self.observed_queue_max
+            state = np.array([self.observed_queue, self.traffic_lights, self.last_change])
 
         if self.observation_mode == "SEGMENT":
             offset = 0
@@ -168,95 +169,92 @@ class FerociousGrid(FerociousEnv):
                 vehicles = self.k.vehicle.get_ids_by_edge (edge_id)
                 for veh_id in vehicles:
                     dist_to_intersec = self.edge_end_dist(veh_id, edge_id)
-                    local_segment_index = dist_to_intersec % CONFIG.SEGMENT_LENGTH
+                    local_segment_index = int(np.floor(dist_to_intersec / CONFIG.SEGMENT_LENGTH))
                     if local_segment_index >= self.nof_segments[index]:
-                        print("{} >= {} ".format(local_segment_index, self.nof_segments[index]))
+                        print("{} >= {} \t dist_to_intersec: {}".format(local_segment_index, self.nof_segments[index], dist_to_intersec))
                     assert local_segment_index < self.nof_segments[index]
                     if dist_to_intersec == -1 : # this vehicle is inside the intersection
                         self.k.vehicle.set_color(veh_id, (255, 255, 255))
                         continue
                     self.observed_segments[offset + local_segment_index] += 1
-                    color = self.colors(local_segment_index)
+                    color = self.colors[local_segment_index]
                     self.k.vehicle.set_color(veh_id, color)
                 self.observed_segments[offset:offset+self.nof_segments[index]] = self.observed_segments[offset:offset+self.nof_segments[index]]/self.observed_segment_max
                 offset += self.nof_segments[index]
-
-        state = np.array([self.observed_queue, self.traffic_lights, self.last_change])
+            state = np.array([self.observed_segments, self.traffic_lights, self.last_change])
         #print ('get_state: {}\t len(self.observed_queue): {}\t len(self.traffic_lights): {}\t len(self.last_change):{}'.format(len(state), len(self.observed_queue),len(self.traffic_lights), len(self.last_change)))
         return state
 
     def _apply_rl_actions(self, rl_actions):
-        if self.tl_type != "actuated":
-            """ DELETE 
-            # check if the action space is discrete
-            if self.discrete:
-                # convert single value to list of 0's and 1's
-                rl_mask = [int(x) for x in list('{0:0b}'.format(rl_actions))]
-                rl_mask = [0] * (self.num_traffic_lights - len(rl_mask)) + rl_mask
-            else:
-                # convert values less than 0.5 to zero and above to 1. 0's indicate
-                # that should not switch the direction
-            """
+        if self.tl_type == "actuated":
+            return
+        # check if the action space is discrete
+        if self.discrete:
+            # convert single value to list of 0's and 1's
+            rl_mask = [int(x) for x in list('{0:0b}'.format(rl_actions))]
+            rl_mask = [0] * (self.num_traffic_lights - len(rl_mask)) + rl_mask
+        else:
             rl_mask = rl_actions > 0.0
-            """
-                This needs to update traffic_lights and lastchange:
-                for each intersection:
-                (1) if enough time has not passed since last action:
-                        just update lastchage
+        assert len(rl_mask) == self.num_traffic_lights
+        """
+            This needs to update traffic_lights and lastchange:
+            for each intersection:
+            (1) if enough time has not passed since last action:
+                    just update lastchage
+                    continue
+            (2) else:
+            (3)     if intersection is in yellow:
+                        intersection go red or green
+                        lastchange = 0
                         continue
-                (2) else:
-                (3)     if intersection is in yellow:
-                            intersection go red or green
-                            lastchange = 0
-                            continue
-                (4)     if rl_action == current state
-                            just update lastchange
-                            continue
-                (5)     else:
-                            intersection go yellow
-                            last change = 0
-                            continue
-            """
-            for intersection, action in enumerate(rl_mask):
-                assert (sum(self.traffic_lights[4*intersection:4*intersection+4]==1))
-                # (1)
-                if self.last_change [ intersection ] + self.sim_step < self.min_switch_time:  # cant act
-                    self.last_change [ intersection ] += self.sim_step
-                    continue
-                # (2)
-                #(3)
-                if self.traffic_lights[4*intersection+1] :
-                    self.traffic_lights[4*intersection+1] = 0
-                    self.traffic_lights[4*intersection+2] = 1
-                    self.last_change [ intersection ] = 0
-                    self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="rGrG")
-                    continue
-                if self.traffic_lights[4*intersection+3] :
-                    self.traffic_lights[4*intersection+3] = 0
-                    self.traffic_lights[4*intersection+0] = 1
-                    self.last_change [ intersection ] = 0
-                    self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="GrGr")
-                    continue
-                #(4)
-                if self.traffic_lights[4*intersection+0] and action:
-                    self.last_change [ intersection ] += self.sim_step
-                    continue
-                if self.traffic_lights[4*intersection+2] and  not action:
-                    self.last_change [ intersection ] += self.sim_step
-                    continue
-                #(5)
-                if self.traffic_lights[4*intersection+0] and  not action:
-                    self.traffic_lights[4*intersection+1] = 1
-                    self.traffic_lights[4*intersection+0] = 0
-                    self.last_change [ intersection ] = 0
-                    self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="yryr")
-                    continue
-                if self.traffic_lights[4*intersection+2] and action:
-                    self.traffic_lights[4*intersection+3] = 1
-                    self.traffic_lights[4*intersection+2] = 0
-                    self.last_change [ intersection ] = 0
-                    self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="ryry")
-                    continue
+            (4)     if rl_action == current state
+                        just update lastchange
+                        continue
+            (5)     else:
+                        intersection go yellow
+                        last change = 0
+                        continue
+        """
+        for intersection, action in enumerate(rl_mask):
+            assert (sum(self.traffic_lights[4*intersection:4*intersection+4]==1))
+            # (1)
+            if self.last_change [ intersection ] + self.sim_step < self.min_switch_time:  # cant act
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            # (2)
+            #(3)
+            if self.traffic_lights[4*intersection+1] :
+                self.traffic_lights[4*intersection+1] = 0
+                self.traffic_lights[4*intersection+2] = 1
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="rGrG")
+                continue
+            if self.traffic_lights[4*intersection+3] :
+                self.traffic_lights[4*intersection+3] = 0
+                self.traffic_lights[4*intersection+0] = 1
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="GrGr")
+                continue
+            #(4)
+            if self.traffic_lights[4*intersection+0] and action:
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            if self.traffic_lights[4*intersection+2] and  not action:
+                self.last_change [ intersection ] += self.sim_step
+                continue
+            #(5)
+            if self.traffic_lights[4*intersection+0] and  not action:
+                self.traffic_lights[4*intersection+1] = 1
+                self.traffic_lights[4*intersection+0] = 0
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="yryr")
+                continue
+            if self.traffic_lights[4*intersection+2] and action:
+                self.traffic_lights[4*intersection+3] = 1
+                self.traffic_lights[4*intersection+2] = 0
+                self.last_change [ intersection ] = 0
+                self.k.traffic_light.set_state(node_id='center{}'.format(intersection),state="ryry")
+                continue
 
     def compute_reward(self, rl_actions, **kwargs):
         vel = np.array(self.k.vehicle.get_speed(self.k.vehicle.get_ids()))
