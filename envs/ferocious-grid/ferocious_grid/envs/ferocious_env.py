@@ -157,6 +157,8 @@ class FerociousEnv(Env):
         next_observation = np.copy(states)
         # test if the agent should terminate due to a crash
         done = crash or self.steps < self.time_counter
+        if self.steps < self.time_counter:
+            print ('done, self.time_counter:\t{}'.format(self.time_counter))
 
         # compute the info for each agent
         infos = {}
