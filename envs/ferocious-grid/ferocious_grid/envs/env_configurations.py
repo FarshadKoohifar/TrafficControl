@@ -1,3 +1,4 @@
+import getpass
 class CONFIG_BASE:
     # time horizon of a single rollout
     HORIZON = 1000
@@ -7,7 +8,7 @@ class CONFIG_BASE:
     LONG_LENGTH = 1000.0
     SHORT_LENGTH = 1000.0
     N_ROWS = 2
-    N_COLUMNS = 3
+    N_COLUMNS = 2
     NUM_CARS_LEFT = 30
     NUM_CARS_RIGHT = 30
     NUM_CARS_TOP = 30
@@ -24,12 +25,17 @@ class CONFIG_BASE:
 
     # SumoParams
     SIM_STEP = 1
-    RENDER = False
+    RENDER = True
 
     # additional_env_params
     SWITCH_TIME = 3.0
     DISCRETE = True
-    TL_TYPE = 'actuated' #'controlled','actuated'
+    STOP_PENALTY_WEIGHT = 0.0
+    if getpass.getuser() == "ferocious":
+        TL_TYPE = 'controlled' #'controlled','actuated'
+    else:
+        TL_TYPE = 'controlled' #'controlled','actuated'
+
 
 #class CONFIG_Q_WEIGHT_OBSERVATION (CONFIG_BASE):
     # additional_env_params

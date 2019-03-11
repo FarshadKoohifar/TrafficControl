@@ -47,7 +47,6 @@ if __name__ == '__main__':
         config['observation_filter']= CONFIG.OBSERVATION_FILTER
     if CONFIG.ALG_RUN == 'APEX':
         pass
-    
 
     create_env, gym_name = make_create_env()
 

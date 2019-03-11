@@ -76,6 +76,7 @@ class FerociousGrid(FerociousEnv):
         )
         super().__init__(env_params, sim_params, scenario )
         # since there is no reference to kernel_api.vehicle.getLength, I guestimate it. Should be used just for normalization.
+        self.stop_penalty_weight=CONFIG.STOP_PENALTY_WEIGHT
         self.max_vehicle_density = 1.0/(2*CONFIG.MINGAP)
         self.edge_names = scenario.get_edge_names()
         self.traffic_lights = np.zeros( 4 * self.num_traffic_lights )
@@ -257,8 +258,12 @@ class FerociousGrid(FerociousEnv):
                 continue
 
     def compute_reward(self, rl_actions, **kwargs):
-        vel = np.array(self.k.vehicle.get_speed(self.k.vehicle.get_ids()))
+        vel = np.absolute(np.array(self.k.vehicle.get_speed(self.k.vehicle.get_ids())))
         maxwell = len(vel)*CONFIG.SPEED_LIMIT
-        result = np.sum(np.absolute(vel))/maxwell
-        assert isinstance(result, float) and result >= 0 and result <= 1
-        return result
+        positive_result = np.sum(vel)/maxwell
+        assert isinstance(positive_result, float) and positive_result >= 0 and positive_result <= 1
+        nof_stoped = 0
+        for v in vel:
+            if v < 1:
+                nof_stoped += 1
+        return positive_result - nof_stoped*self.stop_penalty_weight /len(vel)
