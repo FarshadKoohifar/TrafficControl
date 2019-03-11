@@ -46,6 +46,6 @@ class CONFIG_BASE:
     SEGMENT_LENGTH= 100.1
     OBSERVATION_MODE = "SEGMENT"
 
-    if getpass.getuser() == "ferocious":
+    if getpass.getuser() == "fkoohif":
         TL_TYPE = 'controlled' #'controlled','actuated'
         RENDER = False
