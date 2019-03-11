@@ -31,10 +31,7 @@ class CONFIG_BASE:
     SWITCH_TIME = 3.0
     DISCRETE = True
     STOP_PENALTY_WEIGHT = 0.0
-    if getpass.getuser() == "ferocious":
-        TL_TYPE = 'controlled' #'controlled','actuated'
-    else:
-        TL_TYPE = 'controlled' #'controlled','actuated'
+    TL_TYPE = 'controlled' #'controlled','actuated'
 
 
 #class CONFIG_Q_WEIGHT_OBSERVATION (CONFIG_BASE):
@@ -49,4 +46,6 @@ class CONFIG_BASE:
     SEGMENT_LENGTH= 100.1
     OBSERVATION_MODE = "SEGMENT"
 
-
+    if getpass.getuser() == "ferocious":
+        TL_TYPE = 'controlled' #'controlled','actuated'
+        RENDER = False
